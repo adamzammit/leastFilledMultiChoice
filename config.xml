@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<config>
+    <metadata>
+        <name>leastFilledMultiChoice</name>
+        <type>plugin</type>
+        <creationDate>2023-01-05</creationDate>
+        <lastUpdate>2023-01-05</lastUpdate>
+        <author>Adam Zammit</author>
+        <authorUrl>https://www.acspri.org.au/limesurvey</authorUrl>
+        <supportUrl>https://www.acspri.org.au/limesurvey</supportUrl>
+        <version>1.0.0</version>
+        <license>GNU General Public License v3.0</license>
+        <description><![CDATA[Randomly set the least filled x responses of a multiple choice question based on the responses to any multiple choice question.]]></description>
+    </metadata>
+    <compatibility>
+        <version>3</version>
+    </compatibility>
+</config>
