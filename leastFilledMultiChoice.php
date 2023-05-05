@@ -62,23 +62,25 @@ class leastFilledMultiChoice extends PluginBase
                         $lc = 1;
                         $oval = null;
                         $answers = $oEvent->get('answers');
-                        foreach($oSCount as $key => $val) {
-                            if ($oAttributeN->value == "" && $val != $oval) {
-                                break; //if only filling least filled, and this isn't the least filled then stop
+                        if (strpos($answers,'CHECKED') === false) { //Don't run again if items already selected
+                            foreach($oSCount as $key => $val) {
+                                if ($oAttributeN->value == "" && $val != $oval) {
+                                    break; //if only filling least filled, and this isn't the least filled then stop
+                                }
+                                $oval = $val;
+                                if ($oAttributeN->value != "" && $lc > $oAttributeN->value) {
+                                    break; //if we should only be setting a certain number of values
+                                }
+                                $lc++;
+                                //Set the value
+                                //add "CHECKED" after the line: id="answerSIDXGIDXQIDTITLE"
+                                //set value="Y" after the line: id="javaSIDXGIDXQIDTITLE"
+                                $sgqt = $sid . "X" . $oEvent->get('gid') . "X" . $oEvent->get('qid') . $key;
+                                $answers = preg_replace('/id="answer' . $sgqt . '"\s*value="Y"/', 'id="answer' . $sgqt . '" CHECKED value="Y"', $answers);
+                                $answers = preg_replace('/id="java' . $sgqt . '"\s*value=""/', 'id="java' . $sgqt . '" value="Y"', $answers);
                             }
-                            $oval = $val;
-                            if ($oAttributeN->value != "" && $lc > $oAttributeN->value) {
-                                break; //if we should only be setting a certain number of values
-                            }
-                            $lc++;
-                            //Set the value
-                            //add "CHECKED" after the line: id="answerSIDXGIDXQIDTITLE"
-                            //set value="Y" after the line: id="javaSIDXGIDXQIDTITLE"
-                            $sgqt = $sid . "X" . $oEvent->get('gid') . "X" . $oEvent->get('qid') . $key;
-                            $answers = preg_replace('/id="answer' . $sgqt . '"\s*value="Y"/', 'id="answer' . $sgqt . '" CHECKED value="Y"', $answers);
-                            $answers = preg_replace('/id="java' . $sgqt . '"\s*value=""/', 'id="java' . $sgqt . '" value="Y"', $answers);
+                            $oEvent->set('answers', $answers);
                         }
-                        $oEvent->set('answers', $answers);
                     }
                 }
             }
