@@ -69,15 +69,6 @@ class leastFilledMultiChoice extends PluginBase
                 'qid=:qid and attribute=:attribute',
                 [':qid'=>$this->getEvent()->get('qid'),':attribute'=>'leastFilledMultiChoiceQ']
             );
-            $oAttributeN=QuestionAttribute::model()->find(
-                'qid=:qid and attribute=:attribute',
-                [':qid'=>$this->getEvent()->get('qid'),':attribute'=>'leastFilledMultiChoiceN']
-            );
-            $oAttributeA=QuestionAttribute::model()->find(
-                'qid=:qid and attribute=:attribute',
-                [':qid'=>$this->getEvent()->get('qid'),':attribute'=>'leastFilledMultiChoiceA']
-            );
-
             if ($oAttributeQ && $oAttributeQ->value != "") {
                 //see if the referenced question exists and is a multiple choice question
                 $sid = (int)$oEvent->get('surveyId');
@@ -94,6 +85,10 @@ class leastFilledMultiChoice extends PluginBase
                     //set the oAttributeN least filled for this question (or just the least filled if oAttributeN not set)
                     if (!empty($oSCount)) {
                         asort($oSCount); //sort by least filled
+                        $oAttributeA=QuestionAttribute::model()->find(
+                            'qid=:qid and attribute=:attribute',
+                            [':qid'=>$this->getEvent()->get('qid'),':attribute'=>'leastFilledMultiChoiceA']
+                        );
                         if ($oAttributeA->value != "") { //if one should always be selected, put it first
                             $sColumn = $oQ->sid . "X"
                                 . $oQ->gid . "X"
@@ -113,6 +108,10 @@ class leastFilledMultiChoice extends PluginBase
                         $oval = null;
                         $answers = $oEvent->get('answers');
                         if (strpos($answers, 'CHECKED') === false) { //Don't run again if items already selected
+                            $oAttributeN=QuestionAttribute::model()->find(
+                                'qid=:qid and attribute=:attribute',
+                                [':qid'=>$this->getEvent()->get('qid'),':attribute'=>'leastFilledMultiChoiceN']
+                            );
                             foreach ($oSCount as $key => $val) {
                                 if ($oAttributeN->value == "" && $val != $oval) {
                                     break; //if only filling least filled, and this isn't the least filled then stop
