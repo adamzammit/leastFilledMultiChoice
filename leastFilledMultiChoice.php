@@ -73,6 +73,10 @@ class leastFilledMultiChoice extends PluginBase
                 'qid=:qid and attribute=:attribute',
                 [':qid'=>$this->getEvent()->get('qid'),':attribute'=>'leastFilledMultiChoiceN']
             );
+            $oAttributeA=QuestionAttribute::model()->find(
+                'qid=:qid and attribute=:attribute',
+                [':qid'=>$this->getEvent()->get('qid'),':attribute'=>'leastFilledMultiChoiceA']
+            );
 
             if ($oAttributeQ && $oAttributeQ->value != "") {
                 //see if the referenced question exists and is a multiple choice question
@@ -90,6 +94,21 @@ class leastFilledMultiChoice extends PluginBase
                     //set the oAttributeN least filled for this question (or just the least filled if oAttributeN not set)
                     if (!empty($oSCount)) {
                         asort($oSCount); //sort by least filled
+                        if ($oAttributeA->value != "") { //if one should always be selected, put it first
+                            $sColumn = $oQ->sid . "X"
+                                . $oQ->gid . "X"
+                                . $oQ->qid . $oAttributeA->value;
+                            if (isset($_SESSION['survey_' . $sid][$sColumn]) && $_SESSION['survey_' . $sid][$sColumn] == "Y") { //only if appears in current data
+                                $noSCount = [];
+                                $noSCount[$oAttributeA->value] = 1;
+                                foreach ($oSCount as $key => $val) {
+                                    if ($key != $oAttributeA->value) {
+                                        $noSCount[$key] = $oSCount[$key];
+                                    }
+                                }
+                                $oSCount = $noSCount;
+                            }
+                        }
                         $lc = 1;
                         $oval = null;
                         $answers = $oEvent->get('answers');
@@ -156,17 +175,17 @@ class leastFilledMultiChoice extends PluginBase
             throw new CHttpException(403);
         }
 
-        $qAttributes = array(
-            'leastFilledMultiChoiceQ'=>array(
-                'types'=>'M',
+        $qAttributes = [
+            'leastFilledMultiChoiceQ'=>[
+                'types'=>'MSQ',
                 'category'=>gT('Logic'),
                 'sortorder'=>150,
                 'inputtype'=>'text',
                 'default'=>'',
                 'help'=>'The question code of the multiple choice question as the source of the least filled response data (leave blank to disable)',
                 'caption'=>'Least filled source question code',
-            ),
-            'leastFilledMultiChoiceN'=>array(
+            ],
+            'leastFilledMultiChoiceN'=>[
                 'types'=>'M',
                 'category'=>gT('Logic'),
                 'sortorder'=>151,
@@ -174,8 +193,17 @@ class leastFilledMultiChoice extends PluginBase
                 'default'=>'',
                 'help'=>'The number of least filled items to randomly select. Leave blank to only select the least filled and no more',
                 'caption'=>'Least filled items to select at random',
-            ),
-        );
+            ],
+            'leastFilledMultiChoiceA'=>[
+                'types'=>'MSQ',
+                'category'=>gT('Logic'),
+                'sortorder'=>152,
+                'inputtype'=>'text',
+                'default'=>'',
+                'help'=>'The option code to always select if currently selected. Leave blank to only select the least filled',
+                'caption'=>'The item to always select if currently selected by the respondent, even if not the least filled in previous responses',
+            ],
+        ];
 
         if (method_exists($this->getEvent(), 'append')) {
             $this->getEvent()->append('questionAttributes', $qAttributes);
