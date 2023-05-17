@@ -64,7 +64,9 @@ class leastFilledMultiChoice extends PluginBase
         }
         $oEvent=$this->getEvent();
 
-        if ($oEvent->get('type')=="M") {
+        $qType = $oEvent->get('type');
+
+        if (in_array($qType, ["M","S","Q"])) {
             $oAttributeQ=QuestionAttribute::model()->find(
                 'qid=:qid and attribute=:attribute',
                 [':qid'=>$this->getEvent()->get('qid'),':attribute'=>'leastFilledMultiChoiceQ']
@@ -79,8 +81,10 @@ class leastFilledMultiChoice extends PluginBase
                 if ($oQ) {
                     //count the number of responses for each subquestion of the source question
                     $oSCount = [];
+                    $subquestionvalues = [];
                     foreach ($oQ->getOrderedSubquestions(1) as $oS) { //get subquestions in random order
-                        $oSCount[$oS->title] = $this->_getCount($oS, "Y");
+                        $oSCount[$oS->title] = $this->_getCountSubQuestion($oS, "Y");
+                        $subquestionvalues[$oS->title] = $oS->question;
                     }
                     //set the oAttributeN least filled for this question (or just the least filled if oAttributeN not set)
                     if (!empty($oSCount)) {
@@ -107,7 +111,13 @@ class leastFilledMultiChoice extends PluginBase
                         $lc = 1;
                         $oval = null;
                         $answers = $oEvent->get('answers');
-                        if (strpos($answers, 'CHECKED') === false) { //Don't run again if items already selected
+
+                        $oThisQ=Question::model()->find(
+                            'sid=:sid and title=:title and language=:language',
+                            [':sid'=> $sid, ':title'=>$oEvent->get('code'), ':language'=>App()->getLanguage()]
+                        );
+
+                        if ($qType == "M" && strpos($answers, 'CHECKED') === false) { //Don't run again if items already selected
                             $oAttributeN=QuestionAttribute::model()->find(
                                 'qid=:qid and attribute=:attribute',
                                 [':qid'=>$this->getEvent()->get('qid'),':attribute'=>'leastFilledMultiChoiceN']
@@ -129,6 +139,33 @@ class leastFilledMultiChoice extends PluginBase
                                 $answers = preg_replace('/id="java' . $sgqt . '"\s*value=""/', 'id="java' . $sgqt . '" value="Y"', $answers);
                             }
                             $oEvent->set('answers', $answers);
+                        } else if ($qType == "S") { //short text (one box)
+                            $aCount = $this->_getCountShortText($oQ, $oThisQ); //number of times each item appears
+                            $aCount = $this->_sortByPriorityLeastFilled($aCount, $oThisQ, $oQ);
+                            //otherwise choose least filled, previously selected item
+                            if (!empty($aCount)) {
+                                $sgqt = $sid . "X" . $oEvent->get('gid') . "X" . $oEvent->get('qid');
+                                reset($aCount);
+                                $fitem = key($aCount);
+                                $answers = preg_replace('/id="answer' . $sgqt . '"(\s)*value=""/', 'id="answer' . $sgqt . '"{1} value="' . $subquestionvalues[$fitem]  . '"', $answers);
+                                $oEvent->set('answers', $answers);
+                            }
+                        } else if ($qType == "Q") { //multiple short text (
+                            $aCount = $this->_getCountMultiShortText($oQ, $oThisQ); //number of times each item appears
+                            $aCount = $this->_sortByPriorityLeastFilled($aCount, $oThisQ, $oQ);
+                            //priority items come first if selected
+                            //least filled come next, previously selected
+                            if (!empty($aCount)) {
+                                reset($aCount);
+                                foreach ($oThisQ->getOrderedSubquestions() as $otq) {
+                                    $sgqt = $sid . "X" . $oEvent->get('gid') . "X" . $oEvent->get('qid') . $otq->title;
+                                    $fitem = key($aCount);
+                                    next($aCount);
+                                    $answers = preg_replace('/id="answer' . $sgqt . '"(\s)*value=""/', 'id="answer' . $sgqt . '"{1} value="' . $subquestionvalues[$fitem]  . '"', $answers);
+                                }
+                                $oEvent->set('answers', $answers);
+                            }
+                            $oEvent->set('answers', $answers);
                         }
                     }
                 }
@@ -136,16 +173,71 @@ class leastFilledMultiChoice extends PluginBase
         }
     }
 
+    /**
+     * Count the number of responses to a multiple choice sub question
+     *
+     * @param array  $items The multiple choice items in random order
+     * @param object $oQ    The current question
+     * @param ojbect $oM    The referenced multiple choice question for selection
+     *
+     * @return array        The multiple choice items sorted by priority
+     */
+    private function _sortByPriorityLeastFilled($items, $oQ, $oM)
+    {
+        $priorities = QuestionAttribute::model()->find(
+            'qid=:qid and attribute=:attribute',
+            [':qid'=>$oQ->qid,':attribute'=>'leastFilledMultiChoiceA']
+        );
+        $apriorities = [];
+        if (!empty($priorities->value)) {
+            $apriorities = explode(";", $priorities->value);
+        }
+
+        $nitems = $items;
+
+        //sort by selected
+        foreach ($nitems as $key => $val) {
+            $sColumn = $oM->sid . "X"
+                . $oM->gid . "X"
+                . $oM->qid . $key;
+            if (isset($_SESSION['survey_' . $oM->sid][$sColumn]) && $_SESSION['survey_' . $oM->sid][$sColumn] == "Y") { //only if appears in current data
+                $nitems[$key] = -1;
+            }
+        }
+
+        asort($nitems);
+
+        //move selected priority items first
+        if (count($apriorities) > 0) {
+            foreach ($apriorities as $p) {
+                $sColumn = $oM->sid . "X"
+                    . $oM->gid . "X"
+                    . $oM->qid . $p;
+                if (isset($_SESSION['survey_' . $oM->sid][$sColumn]) && $_SESSION['survey_' . $oM->sid][$sColumn] == "Y") { //only if appears in current data
+                    $titems = [];
+                    $titems[$p] = 1;
+                    foreach ($nitems as $key => $val) {
+                        if ($key != $p) {
+                            $titems[$key] = $nitems[$key];
+                        }
+                    }
+                    $nitems = $titems;
+                }
+            }
+        }
+
+        return $nitems;
+    }
 
     /**
-     * Count the number of responses to a question
+     * Count the number of responses to a multiple choice sub question
      *
      * @param object $oQuestion The question to check
      * @param string $sValue    The value to compare (null if no compare)
      *
      * @return int              The number of completed responses matching
      */
-    private function _getCount($oQuestion, $sValue = null)
+    private function _getCountSubQuestion($oQuestion, $sValue = null)
     {
         $sColumn = $oQuestion->sid . "X"
             . $oQuestion->gid . "X"
@@ -160,6 +252,64 @@ class leastFilledMultiChoice extends PluginBase
         return intval(SurveyDynamic::model($oQuestion->sid)->count($oCriteria));
     }
 
+    /**
+     * Count the number of times each option value from a multiple choice appears
+     * in a subsequent multiple short text question
+     *
+     * @param object $oQM The multiple choice question
+     * @param string $oQQ The multiple short text question
+     *
+     * @return array      The number of completed responses for each option
+     */
+    private function _getCountMultiShortText($oQM, $oQQ)
+    {
+        $return = [];
+        foreach ($oQM->getOrderedSubquestions(1) as $oS) { //get subquestions
+            $r = 0;
+            foreach ($oQQ->getOrderedSubquestions(0) as $oQ) {
+                $sColumn = $oQ->sid . "X"
+                    . $oQ->gid . "X"
+                    . $oQ->parent_qid . $oQ->title;
+                $sQuotedColumn=Yii::app()->db->quoteColumnName($sColumn);
+                $oCriteria = new CDbCriteria;
+                $oCriteria->condition="submitdate IS NOT NULL";
+                $oCriteria->addCondition("{$sQuotedColumn} IS NOT NULL");
+                $oCriteria->compare($sQuotedColumn, $oS->question);
+                $r += intval(SurveyDynamic::model($oQ->sid)->count($oCriteria));
+            }
+            $return[$oS->title] = $r;
+        }
+        asort($return); //sort by least filled
+        return $return;
+    }
+
+    /**
+     * Count the number of times each option value from a multiple choice appears
+     * in a subsequent short text question
+     *
+     * @param object $oQM The multile choice question
+     * @param string $oQS The short text question
+     *
+     * @return array      The number of completed responses for each option
+     */
+    private function _getCountShortText($oQM, $oQS)
+    {
+        $return = [];
+        foreach ($oQM->getOrderedSubquestions(1) as $oS) { //get subquestions
+            $r = 0;
+            $sColumn = $oQS->sid . "X"
+                . $oQS->gid . "X"
+                . $oQS->qid;
+            $sQuotedColumn=Yii::app()->db->quoteColumnName($sColumn);
+            $oCriteria = new CDbCriteria;
+            $oCriteria->condition="submitdate IS NOT NULL";
+            $oCriteria->addCondition("{$sQuotedColumn} IS NOT NULL");
+            $oCriteria->compare($sQuotedColumn, $oS->question);
+            $return[$oS->title] = intval(SurveyDynamic::model($oS->sid)->count($oCriteria));
+        }
+        asort($return); //sort by least filled
+        return $return;
+    }
 
     /**
      * Add question settings (for multi choice)
@@ -199,8 +349,8 @@ class leastFilledMultiChoice extends PluginBase
                 'sortorder'=>152,
                 'inputtype'=>'text',
                 'default'=>'',
-                'help'=>'The option code to always select if currently selected. Leave blank to only select the least filled',
-                'caption'=>'The item to always select if currently selected by the respondent, even if not the least filled in previous responses',
+                'help'=>'The option code(s) to always select if currently selected. Leave blank to only select the least filled',
+                'caption'=>'The item(s) to always select if currently selected by the respondent, even if not the least filled in previous responses. Separate by semi-colons (;)',
             ],
         ];
 
