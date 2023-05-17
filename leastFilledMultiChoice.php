@@ -93,7 +93,7 @@ class leastFilledMultiChoice extends PluginBase
                             'qid=:qid and attribute=:attribute',
                             [':qid'=>$this->getEvent()->get('qid'),':attribute'=>'leastFilledMultiChoiceA']
                         );
-                        if ($oAttributeA->value != "") { //if one should always be selected, put it first
+                        if (isset($oAttributeA) && $oAttributeA->value != "") { //if one should always be selected, put it first
                             $sColumn = $oQ->sid . "X"
                                 . $oQ->gid . "X"
                                 . $oQ->qid . $oAttributeA->value;
@@ -123,11 +123,11 @@ class leastFilledMultiChoice extends PluginBase
                                 [':qid'=>$this->getEvent()->get('qid'),':attribute'=>'leastFilledMultiChoiceN']
                             );
                             foreach ($oSCount as $key => $val) {
-                                if ($oAttributeN->value == "" && $val != $oval) {
+                                if (!empty($oAttributeN->value) && $val != $oval) {
                                     break; //if only filling least filled, and this isn't the least filled then stop
                                 }
                                 $oval = $val;
-                                if ($oAttributeN->value != "" && $lc > $oAttributeN->value) {
+                                if (!empty($oAttributeN->value) && $lc > $oAttributeN->value) {
                                     break; //if we should only be setting a certain number of values
                                 }
                                 $lc++;
