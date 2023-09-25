@@ -2,7 +2,7 @@
 
 A plugin which extends the LimeSurvey multiple choice question to automatically set items as "Y" if they were the least filled responses for all previous respondents. The source question can be the question itself, or another multiple choice question with the same number of subquestions.
 
-Now extended to include short text and multiple short questions having their data filled based on selections from previous multiple choice question.
+Now extended to include short text and multiple short questions having their data filled based on selections from a previous multiple choice question.
 
 
 ## Documentation
