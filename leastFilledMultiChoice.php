@@ -184,9 +184,9 @@ class leastFilledMultiChoice extends PluginBase
                             if (!empty($aCount)) {
                                 reset($aCount);
                                 if (version_compare(Yii::app()->getConfig('versionnumber'), "5", "<")) {
-                                    $aOrderedSubquestions = oThisQ->getOrderedSubquestions();
+                                    $aOrderedSubquestions = $oThisQ->getOrderedSubquestions();
                                 } else {
-                                    $aOrderedSubquestions = oThisQ->getOrderedSubquestions(0);
+                                    $aOrderedSubquestions = $oThisQ->getOrderedSubquestions(0);
                                 }
                                 foreach ($aOrderedSubquestions as $otq) {
                                     $sgqt = $sid . "X" . $oEvent->get('gid') . "X" . $oEvent->get('qid') . $otq->title;
@@ -217,7 +217,7 @@ class leastFilledMultiChoice extends PluginBase
     {
         $priorities = QuestionAttribute::model()->find(
             'qid=:qid and attribute=:attribute',
-            [':qid' => $oQ->qid,':attribut' => 'leastFilledMultiChoiceA']
+            [':qid' => $oQ->qid,':attribute' => 'leastFilledMultiChoiceA']
         );
         $apriorities = [];
         if (!empty($priorities->value)) {
