@@ -33,6 +33,8 @@
  * GNU General Public License for more details.
  */
 
+require_once(Yii::app()->basePath . '/libraries/MersenneTwister.php');
+
 class leastFilledMultiChoice extends PluginBase
 {
     protected static $name = 'leastFilledMultiChoice';
@@ -83,7 +85,9 @@ class leastFilledMultiChoice extends PluginBase
                     //count the number of responses for each subquestion of the source question
                     $oSCount = [];
                     $subquestionvalues = [];
-                    foreach ($oQ->getOrderedSubquestions(1) as $oS) { //get subquestions in random order
+                    ls\mersenne\setSeed($sid);
+                    $aOrderedSubquestions = ls\mersenne\shuffle($oQ->getOrderedSubquestions());
+                    foreach ($aOrderedSubquestions as $oS) { //get subquestions in random order
                         $oSCount[$oS->title] = $this->getCountSubQuestion($oS, "Y");
                         $subquestionvalues[$oS->title] = $oS->question;
                     }
@@ -271,9 +275,10 @@ class leastFilledMultiChoice extends PluginBase
     private function getCountMultiShortText($oQM, $oQQ)
     {
         $return = [];
-        foreach ($oQM->getOrderedSubquestions(1) as $oS) { //get subquestions
+        $aOrderedSubquestions = ls\mersenne\shuffle($oQM->getOrderedSubquestions());
+        foreach ($aOrderedSubquestions as $oS) { //get subquestions in random order
             $r = 0;
-            foreach ($oQQ->getOrderedSubquestions(0) as $oQ) {
+            foreach ($oQQ->getOrderedSubquestions() as $oQ) {
                 $sColumn = $oQ->sid . "X"
                     . $oQ->gid . "X"
                     . $oQ->parent_qid . $oQ->title;
@@ -302,7 +307,8 @@ class leastFilledMultiChoice extends PluginBase
     private function getCountShortText($oQM, $oQS)
     {
         $return = [];
-        foreach ($oQM->getOrderedSubquestions(1) as $oS) { //get subquestions
+        $aOrderedSubquestions = ls\mersenne\shuffle($oQM->getOrderedSubquestions());
+        foreach ($aOrderedSubquestions as $oS) { //get subquestions in random order
             $r = 0;
             $sColumn = $oQS->sid . "X"
                 . $oQS->gid . "X"
