@@ -77,19 +77,34 @@ class leastFilledMultiChoice extends PluginBase
             if ($oAttributeQ && $oAttributeQ->value != "") {
                 //see if the referenced question exists and is a multiple choice question
                 $sid = (int)$oEvent->get('surveyId');
-                $oQ = Question::model()->find(
-                    'sid=:sid and type=:type and title=:title and language=:language',
-                    [':sid' => $sid, ':type' => 'M',':title' => $oAttributeQ->value, ':language' => App()->getLanguage()]
-                );
+                if (version_compare(Yii::app()->getConfig('versionnumber'), "5", "<")) {
+                    $oQ = Question::model()->find(
+                        'sid=:sid and type=:type and title=:title and language=:language',
+                        [':sid' => $sid, ':type' => 'M',':title' => $oAttributeQ->value, ':language' => App()->getLanguage()]
+                    );
+                } else {
+                    $oQ = Question::model()->find(
+                        'sid=:sid and type=:type and title=:title',
+                        [':sid' => $sid, ':type' => 'M',':title' => $oAttributeQ->value]
+                    );
+                }
                 if ($oQ) {
                     //count the number of responses for each subquestion of the source question
                     $oSCount = [];
                     $subquestionvalues = [];
                     ls\mersenne\setSeed($sid);
-                    $aOrderedSubquestions = ls\mersenne\shuffle($oQ->getOrderedSubquestions());
+                    if (version_compare(Yii::app()->getConfig('versionnumber'), "5", "<")) {
+                        $aOrderedSubquestions = ls\mersenne\shuffle($oQ->getOrderedSubquestions());
+                    } else {
+                        $aOrderedSubquestions = ls\mersenne\shuffle($oQ->getOrderedSubquestions(0));
+                    }
                     foreach ($aOrderedSubquestions as $oS) { //get subquestions in random order
                         $oSCount[$oS->title] = $this->getCountSubQuestion($oS, "Y");
-                        $subquestionvalues[$oS->title] = $oS->question;
+                        $osT = $oS;
+                        if (version_compare(Yii::app()->getConfig('versionnumber'), "5", ">=")) {
+                            $osT = QuestionL10n::model()->findByAttributes(['qid' => $oS->qid, 'language' => App()->getLanguage()]);
+                        }
+                        $subquestionvalues[$oS->title] = $osT->question;
                     }
                     //set the oAttributeN least filled for this question (or just the least filled if oAttributeN not set)
                     if (!empty($oSCount)) {
@@ -117,18 +132,24 @@ class leastFilledMultiChoice extends PluginBase
                         $oval = null;
                         $answers = $oEvent->get('answers');
 
-                        $oThisQ = Question::model()->find(
-                            'sid=:sid and title=:title and language=:language',
-                            [':sid' => $sid, ':title' => $oEvent->get('code'), ':language' => App()->getLanguage()]
-                        );
-
+                        if (version_compare(Yii::app()->getConfig('versionnumber'), "5", "<")) {
+                            $oThisQ = Question::model()->find(
+                                'sid=:sid and title=:title and language=:language',
+                                [':sid' => $sid, ':title' => $oEvent->get('code'), ':language' => App()->getLanguage()]
+                            );
+                        } else {
+                            $oThisQ = Question::model()->find(
+                                'sid=:sid and title=:title',
+                                [':sid' => $sid, ':title' => $oEvent->get('code')]
+                            );
+                        }
                         if ($qType == "M" && strpos($answers, 'CHECKED') === false) { //Don't run again if items already selected
                             $oAttributeN = QuestionAttribute::model()->find(
                                 'qid=:qid and attribute=:attribute',
                                 [':qid' => $this->getEvent()->get('qid'),':attribute' => 'leastFilledMultiChoiceN']
                             );
                             foreach ($oSCount as $key => $val) {
-                                if (!empty($oAttributeN->value) && $val != $oval) {
+                                if (empty($oAttributeN->value) && $val != $oval) {
                                     break; //if only filling least filled, and this isn't the least filled then stop
                                 }
                                 $oval = $val;
@@ -162,7 +183,12 @@ class leastFilledMultiChoice extends PluginBase
                             //least filled come next, previously selected
                             if (!empty($aCount)) {
                                 reset($aCount);
-                                foreach ($oThisQ->getOrderedSubquestions() as $otq) {
+                                if (version_compare(Yii::app()->getConfig('versionnumber'), "5", "<")) {
+                                    $aOrderedSubquestions = oThisQ->getOrderedSubquestions();
+                                } else {
+                                    $aOrderedSubquestions = oThisQ->getOrderedSubquestions(0);
+                                }
+                                foreach ($aOrderedSubquestions as $otq) {
                                     $sgqt = $sid . "X" . $oEvent->get('gid') . "X" . $oEvent->get('qid') . $otq->title;
                                     $fitem = key($aCount);
                                     next($aCount);
@@ -254,7 +280,7 @@ class leastFilledMultiChoice extends PluginBase
             . $oQuestion->gid . "X"
             . $oQuestion->parent_qid . $oQuestion->title;
         $sQuotedColumn = Yii::app()->db->quoteColumnName($sColumn);
-        $oCriteria = new(CDbCriteria);
+        $oCriteria = new CDbCriteria();
         $oCriteria->condition = "submitdate IS NOT NULL";
         $oCriteria->addCondition("{$sQuotedColumn} IS NOT NULL");
         if (!is_null($sValue)) {
@@ -275,18 +301,31 @@ class leastFilledMultiChoice extends PluginBase
     private function getCountMultiShortText($oQM, $oQQ)
     {
         $return = [];
-        $aOrderedSubquestions = ls\mersenne\shuffle($oQM->getOrderedSubquestions());
+        if (version_compare(Yii::app()->getConfig('versionnumber'), "5", "<")) {
+            $aOrderedSubquestions = ls\mersenne\shuffle($oQM->getOrderedSubquestions());
+        } else {
+            $aOrderedSubquestions = ls\mersenne\shuffle($oQM->getOrderedSubquestions(0));
+        }
         foreach ($aOrderedSubquestions as $oS) { //get subquestions in random order
             $r = 0;
-            foreach ($oQQ->getOrderedSubquestions() as $oQ) {
+            if (version_compare(Yii::app()->getConfig('versionnumber'), "5", "<")) {
+                $aOrderedSubquestionsQ = $oQQ->getOrderedSubquestions();
+            } else {
+                $aOrderedSubquestionsQ = $oQQ->getOrderedSubquestions(0);
+            }
+            foreach ($aOrderedSubquestionsQ as $oQ) {
                 $sColumn = $oQ->sid . "X"
                     . $oQ->gid . "X"
                     . $oQ->parent_qid . $oQ->title;
                 $sQuotedColumn = Yii::app()->db->quoteColumnName($sColumn);
-                $oCriteria = new(CDbCriteria);
+                $oCriteria = new CDbCriteria();
                 $oCriteria->condition = "submitdate IS NOT NULL";
                 $oCriteria->addCondition("{$sQuotedColumn} IS NOT NULL");
-                $oCriteria->compare($sQuotedColumn, $oS->question);
+                $osT = $oS;
+                if (version_compare(Yii::app()->getConfig('versionnumber'), "5", ">=")) {
+                    $osT = QuestionL10n::model()->findByAttributes(['qid' => $oS->qid, 'language' => App()->getLanguage()]);
+                }
+                $oCriteria->compare($sQuotedColumn, $osT->question);
                 $r += intval(SurveyDynamic::model($oQ->sid)->count($oCriteria));
             }
             $return[$oS->title] = $r;
@@ -307,17 +346,25 @@ class leastFilledMultiChoice extends PluginBase
     private function getCountShortText($oQM, $oQS)
     {
         $return = [];
-        $aOrderedSubquestions = ls\mersenne\shuffle($oQM->getOrderedSubquestions());
+        if (version_compare(Yii::app()->getConfig('versionnumber'), "5", "<")) {
+            $aOrderedSubquestions = ls\mersenne\shuffle($oQM->getOrderedSubquestions());
+        } else {
+            $aOrderedSubquestions = ls\mersenne\shuffle($oQM->getOrderedSubquestions(0));
+        }
         foreach ($aOrderedSubquestions as $oS) { //get subquestions in random order
             $r = 0;
             $sColumn = $oQS->sid . "X"
                 . $oQS->gid . "X"
                 . $oQS->qid;
             $sQuotedColumn = Yii::app()->db->quoteColumnName($sColumn);
-            $oCriteria = new(CDbCriteria);
+            $oCriteria = new CDbCriteria();
             $oCriteria->condition = "submitdate IS NOT NULL";
             $oCriteria->addCondition("{$sQuotedColumn} IS NOT NULL");
-            $oCriteria->compare($sQuotedColumn, $oS->question);
+            $osT = $oS;
+            if (version_compare(Yii::app()->getConfig('versionnumber'), "5", ">=")) {
+                $osT = QuestionL10n::model()->findByAttributes(['qid' => $oS->qid, 'language' => App()->getLanguage()]);
+            }
+            $oCriteria->compare($sQuotedColumn, $osT->question);
             $return[$oS->title] = intval(SurveyDynamic::model($oS->sid)->count($oCriteria));
         }
         asort($return); //sort by least filled

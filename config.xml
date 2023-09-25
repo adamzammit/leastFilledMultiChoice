@@ -14,5 +14,6 @@
     </metadata>
     <compatibility>
         <version>3</version>
+        <version>6</version>
     </compatibility>
 </config>
