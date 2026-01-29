@@ -95,8 +95,14 @@ class leastFilledMultiChoice extends PluginBase
                     ls\mersenne\setSeed($sid);
                     if (version_compare(Yii::app()->getConfig('versionnumber'), "5", "<")) {
                         $aOrderedSubquestions = ls\mersenne\shuffle($oQ->getOrderedSubquestions());
-                    } else {
+                    } else if (version_compare(Yii::app()->getConfig('versionnumber'), "6.16", "<")) {
                         $aOrderedSubquestions = ls\mersenne\shuffle($oQ->getOrderedSubquestions(0));
+                    } else {
+                        $diContainer = \LimeSurvey\DI::getContainer();
+                        $questionOrderingService = $diContainer->get(
+                            \LimeSurvey\Models\Services\QuestionOrderingService\QuestionOrderingService::class
+                        );
+                        $aOrderedSubquestions = ls\mersenne\shuffle($questionOrderingService->getOrderedSubQuestions($oQ));
                     }
                     foreach ($aOrderedSubquestions as $oS) { //get subquestions in random order
                         $oSCount[$oS->title] = $this->getCountSubQuestion($oS, "Y");
@@ -185,8 +191,10 @@ class leastFilledMultiChoice extends PluginBase
                                 reset($aCount);
                                 if (version_compare(Yii::app()->getConfig('versionnumber'), "5", "<")) {
                                     $aOrderedSubquestions = $oThisQ->getOrderedSubquestions();
-                                } else {
+                                } else if (version_compare(Yii::app()->getConfig('versionnumber'), "6.16", "<")) {
                                     $aOrderedSubquestions = $oThisQ->getOrderedSubquestions(0);
+                                } else {
+                                    $aOrderedSubquestions = ls\mersenne\shuffle($questionOrderingService->getOrderedSubQuestions($oThisQ));
                                 }
                                 foreach ($aOrderedSubquestions as $otq) {
                                     $sgqt = $sid . "X" . $oEvent->get('gid') . "X" . $oEvent->get('qid') . $otq->title;
@@ -303,15 +311,23 @@ class leastFilledMultiChoice extends PluginBase
         $return = [];
         if (version_compare(Yii::app()->getConfig('versionnumber'), "5", "<")) {
             $aOrderedSubquestions = ls\mersenne\shuffle($oQM->getOrderedSubquestions());
-        } else {
+        } else if (version_compare(Yii::app()->getConfig('versionnumber'), "6.16", "<")) {
             $aOrderedSubquestions = ls\mersenne\shuffle($oQM->getOrderedSubquestions(0));
+        } else {
+            $diContainer = \LimeSurvey\DI::getContainer();
+            $questionOrderingService = $diContainer->get(
+                \LimeSurvey\Models\Services\QuestionOrderingService\QuestionOrderingService::class
+            );
+            $aOrderedSubquestions = ls\mersenne\shuffle($questionOrderingService->getOrderedSubQuestions($oQM));
         }
         foreach ($aOrderedSubquestions as $oS) { //get subquestions in random order
             $r = 0;
             if (version_compare(Yii::app()->getConfig('versionnumber'), "5", "<")) {
                 $aOrderedSubquestionsQ = $oQQ->getOrderedSubquestions();
-            } else {
+            } else if (version_compare(Yii::app()->getConfig('versionnumber'), "6.16", "<")) {
                 $aOrderedSubquestionsQ = $oQQ->getOrderedSubquestions(0);
+            } else {
+                $aOrderedSubquestionsQ = $questionOrderingService->getOrderedSubQuestions($oQQ);
             }
             foreach ($aOrderedSubquestionsQ as $oQ) {
                 $sColumn = $oQ->sid . "X"
@@ -348,8 +364,14 @@ class leastFilledMultiChoice extends PluginBase
         $return = [];
         if (version_compare(Yii::app()->getConfig('versionnumber'), "5", "<")) {
             $aOrderedSubquestions = ls\mersenne\shuffle($oQM->getOrderedSubquestions());
-        } else {
+        } else if (version_compare(Yii::app()->getConfig('versionnumber'), "6.16", "<")) {
             $aOrderedSubquestions = ls\mersenne\shuffle($oQM->getOrderedSubquestions(0));
+        } else {
+            $diContainer = \LimeSurvey\DI::getContainer();
+            $questionOrderingService = $diContainer->get(
+                \LimeSurvey\Models\Services\QuestionOrderingService\QuestionOrderingService::class
+            );
+            $aOrderedSubquestions = ls\mersenne\shuffle($questionOrderingService->getOrderedSubQuestions($oQM));
         }
         foreach ($aOrderedSubquestions as $oS) { //get subquestions in random order
             $r = 0;
