@@ -194,7 +194,7 @@ class leastFilledMultiChoice extends PluginBase
                                 } else if (version_compare(Yii::app()->getConfig('versionnumber'), "6.16", "<")) {
                                     $aOrderedSubquestions = $oThisQ->getOrderedSubquestions(0);
                                 } else {
-                                    $aOrderedSubquestions = ls\mersenne\shuffle($questionOrderingService->getOrderedSubQuestions($oThisQ,0));
+                                    $aOrderedSubquestions = $questionOrderingService->getOrderedSubQuestions($oThisQ,0);
                                 }
                                 foreach ($aOrderedSubquestions as $otq) {
                                     $sgqt = $sid . "X" . $oEvent->get('gid') . "X" . $oEvent->get('qid') . $otq->title;
